@@ -185,255 +185,245 @@ if __name__ == '__main__':
     # office: "amazon", "webcam", "dslr", "caltech"
     # "digit_five": "mnist", "usps", "svhn", "mnist-m", "synthetic_digits" 
 
-    dataset_name = "digit_five"
     class_num = 10
-    # target_list = ["mnist", "mnist-m", "usps"]
-    # target_list = ["synthetic_digits", "svhn"]
-    target_list = ["mnist", "usps"]
+    dataset_name = "digit_five"
+    target_list = ["mnist", "mnist-m", "usps", "synthetic_digits", "svhn"]
     dataset_list = ["mnist", "mnist-m", "usps", "synthetic_digits", "svhn"]
 
     m = 800
-    n_features = 1000
+    n_features = 1000 # 500
     # sigma = 5
     mu = 10
     kernel = 'rbf'
-    classifier_avg_num = 50
+    # classifier_avg_num = 50
 
     for target in target_list:
-        # Setup output
-        data = time.strftime("%Y%m%d-%H-%M", time.localtime())
-        exp = data + 'Average'
-        log_file = 'digit_five_occasionally_random3_random_random_subset_Wrf_Classifier_droplast_all_to_{}_Sigma_Wrf_Classifier_{}.txt'.format(target, exp)
 
-        if log_file is not None:
-            if os.path.exists(log_file):
-                print('Output log file {} already exists'.format(log_file))
-        def log(text, end='\n'):
-            print(text)
+
+        for Ts in [10, 20, 50, 100, 200, 400, 800]:        
+        # for Ts in [400]:
+        # for Ts in [800, 1600]:
+            if target == "mnist" and Ts == 800:
+                continue
+
+            # Setup output
+            data = time.strftime("%Y%m%d-%H-%M", time.localtime())
+            exp = data + 'Average'
+            log_file = 'Ts={}_subset_mmdLoss_Fig5_TsList_digit_five_Wrf_Classifier_{}_{}.txt'.format(Ts, target, exp)
+
             if log_file is not None:
-                with open(log_file, 'a') as f:
-                    f.write(text + end)
-                    f.flush()
-                    f.close() 
+                if os.path.exists(log_file):
+                    print('Output log file {} already exists'.format(log_file))
+            def log(text, end='\n'):
+                print(text)
+                if log_file is not None:
+                    with open(log_file, 'a') as f:
+                        f.write(text + end)
+                        f.flush()
+                        f.close() 
+                        
+            # hyper-parameters
+            feature_dim = 2048 # 25088
+            highest_acc = []
+            highest_ave_acc = []
+            trade_off1 = 1
+            trade_off2 = 1
+            mu_list = [10]
 
-        feature_dim = 2048 # 25088
-        highest_acc = []
-        highest_ave_acc = []
-        trade_off1 = 1
-        trade_off2 = 1
-        mu_list = [10]
-
-        for currently_i in range(10):
-            batch_ns = 128
-            batch_nt = batch_ns
-    
-            source_dataset_list = dataset_list.copy()
-            source_dataset_list.remove(target)
-            
-            # loading datasets                        
-            if dataset_name == "digit_five":
-                num_classes = 10
-                class_names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-            source_dataset1 = digit_five_dataset_federated(source_dataset_list[0])
-            source_dataset2 = digit_five_dataset_federated(source_dataset_list[1])
-            source_dataset3 = digit_five_dataset_federated(source_dataset_list[2])
-            source_dataset4 = digit_five_dataset_federated(source_dataset_list[3])
-            target_dataset = digit_five_dataset_federated(target)
-            ns_1, ns_2, ns_3, ns_4, nt = len(source_dataset1), len(source_dataset2), len(source_dataset3), len(source_dataset4), len(target_dataset)
-            ns_sum = ns_1 + ns_2 + ns_3 + ns_4
-            ns_list = [ns_1, ns_2, ns_3, ns_4, nt]
-
-            # DataLoader and ForeverDataIterator
-            # loader_list = [source_loader1, source_loader2, source_loader3, source_loader4, target_loader]
-            loader_list = digit_five_ForeverDataIterator(source_dataset1, source_dataset2, source_dataset3, source_dataset4, target_dataset, batch_ns, batch_nt)
-            train_source_iter1 = ForeverDataIterator(loader_list[0]) # source_loader1
-            train_source_iter2 = ForeverDataIterator(loader_list[1]) # source_loader2
-            train_source_iter3 = ForeverDataIterator(loader_list[2]) # source_loader3
-            train_source_iter4 = ForeverDataIterator(loader_list[3]) # source_loader4
-            train_target_iter = ForeverDataIterator(loader_list[4])# target_loader
-
-            # sigma_list = list(np.linspace(0.1, 1, 10))
-            # sigma_list = list(np.linspace(1, 11, 6))
-            # sigma_list = list(np.linspace(10, 17, 8))
-            sigma_list = {"mnist":1, "mnist-m":1, "usps":1, "synthetic_digits":3, "svhn":3}
-            sigma = 1 # sigma_list[target]
-            log("currently_i = {}".format(currently_i))
-            log("Multi-Source Setting: Federated Resnet with only (7) layer require_grad=True, learning_rate = 2e-4")
-            # log("classifier_avg_num_list =  [10, 20, 50, 75, 100, 200, 400, 800]")
-            log("Occasionally  Classifier Averaging (%classifier_avg_num), and each iteration with 1_n W_rf Averaging ")
-            log("random_i_list1, random_i_list2 < random_i_list1 , random_i_list3 < random_i_list2")
-            # log("Random Subset, each iteration with 1_n both Classifiers and W_rf Averaging ")
-            log("ns_sum = {}, \t ns_1 = {}, \t  ns_2 = {}, \t  ns_3 = {}, \t  ns_4 = {}, \t  nt = {}".format(ns_sum, ns_1, ns_2, ns_3, ns_4, nt))
-            log("sigma = 1")
-            log('dataset = {}, \t source1 = {}, \t source2 = {}, \t source3 = {}, \t source4 = {}, \t target = {}'.format(dataset_name, source_dataset_list[0], source_dataset_list[1], source_dataset_list[2], source_dataset_list[3], target))
-            
-            # exp on classifier_avg_num_list for communication periods
-            log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-            log('currently_i = {}'.format(currently_i))
-            # log('classifier_avg_num = {}'.format(classifier_avg_num))
-
-            # model setting
-            classifier = federated_source_and_target_model(feature_dim=feature_dim, m=m, n_features=n_features, sigma=sigma, gamma=mu, kernel=kernel, class_num=class_num).to(device)
-            value_loss = nn.CrossEntropyLoss()
-            learning_rate = 2e-4
-
-            epoches = 50
-            iter_num = 35 # 100 # 50 # 200 # 30
-
-            # log setting message
-            model_setting = 'resnet50'
-            log('Model: {} '.format(model_setting))
-            log('Setting: m={m}, n_features={n_features}, sigma={sigma}, mu={mu}, kernel={kernel}'.format(m=m, n_features=n_features, sigma=sigma, mu=mu, kernel=kernel))
-            log('       :  learning_rate={lr}, batch_ns={batch_ns}, batch_nt={batch_nt}, iter_num={iter_num}, trade_off1={trade_off1}, '.format(lr=learning_rate, batch_ns=batch_ns, batch_nt=batch_nt, iter_num=iter_num, trade_off1=trade_off1))
-            optimizer = Adam(classifier.parameters(), lr=learning_rate)
-
-            max_acc = torch.tensor(0).to(device)
-            max_ace_acc = torch.tensor(0).to(device)
-            mmd_average_list = [1, 1 ,1, 1]
-
-            """
-            # init W_rf layers
-            with torch.no_grad():
-                Sigma_Sigma_T_list = [torch.zeros(2*n_features, 2*n_features).to(device)] * 5
-                Sigma_y_list = [torch.zeros(2*n_features, 1).to(device)] * 5
-                # a. get Sigma_1_i or  Sigma_1_i
-                for loader_i in range(5):
-                    print('loader_i = ', loader_i)
-                    for data_i, label_i in tqdm(loader_list[loader_i]):
-                        source1_Sigma_i, source1_Sigma_yi = classifier.forward_rf_map(data_i.to(device))
-                        # record
-                        Sigma_Sigma_T_list[loader_i] += torch.mm(source1_Sigma_i, source1_Sigma_i.T)
-                        Sigma_y_list[loader_i] += source1_Sigma_yi
-                # b. get eigenvectors 
-                W_rf_s1, W_rf_s2, W_rf_s3, W_rf_s4, W_rf_t = get_all_init_W_rf(Sigma_Sigma_T_list, Sigma_y_list, ns_1, ns_2, ns_3, ns_4, nt, gamma=mu, m=m, batch_ns=batch_ns)
-                # c. init the W_rf layer in classifier with W_rf matrix
-                classifier.init_W_rf(W_rf_s1, W_rf_s2, W_rf_s3, W_rf_s4, W_rf_t)
-            """
-            
-            # train
-            for epoch in range(epoches):
-                classifier.train()
-                source_acc = torch.tensor(0).to(device)
-                tar_acc = torch.tensor(0).to(device)
-                source_num = torch.tensor(4).to(device)
-                for iter_i in tqdm(range(iter_num)):
-                    x_s1, labels_s1 = next(train_source_iter1)
-                    x_s2, labels_s2 = next(train_source_iter2)
-                    x_s3, labels_s3 = next(train_source_iter3)
-                    x_s4, labels_s4 = next(train_source_iter4)
-                    x_t, labels_t = next(train_target_iter)
-                    x_s1 = x_s1.to(device)
-                    x_s2 = x_s2.to(device)
-                    x_s3 = x_s3.to(device)
-                    x_s4 = x_s4.to(device)
-                    x_t = x_t.to(device)
-
-                    labels_s1 = labels_s1.to(torch.int64)
-                    labels_s2 = labels_s2.to(torch.int64)
-                    labels_s3 = labels_s3.to(torch.int64)
-                    labels_s4 = labels_s4.to(torch.int64)
-                    labels_t = labels_t.to(torch.int64)
-                    labels_s1 = labels_s1.to(device)
-                    labels_s2 = labels_s2.to(device)
-                    labels_s3 = labels_s3.to(device)
-                    labels_s4 = labels_s4.to(device)
-                    labels_t = labels_t.to(device)      
-
-                    source1_Sigma_yi, source2_Sigma_yi, source3_Sigma_yi, source4_Sigma_yi, target_Sigma_yi, ys1, ys2, ys3, ys4, yt = classifier(x_s1, x_s2, x_s3, x_s4, x_t)
-                    # soft voting
-                    # yt = (ns_1/ns_sum) * yt[:,0,:] + (ns_2/ns_sum) * yt[:,1,:] + (ns_3/ns_sum) * yt[:,2,:] + (ns_4/ns_sum) * yt[:,3,:]
-
-                    cls_loss1 = value_loss(ys1, torch.flatten(labels_s1, start_dim=0))
-                    cls_loss2 = value_loss(ys2, torch.flatten(labels_s2, start_dim=0))
-                    cls_loss3 = value_loss(ys3, torch.flatten(labels_s3, start_dim=0))
-                    cls_loss4 = value_loss(ys4, torch.flatten(labels_s4, start_dim=0))
-                    
-                    # mmd_loss calculating
-                    temp_target_Sigma_yi = target_Sigma_yi.detach_()
-                    temp_source1_Sigma_yi = source1_Sigma_yi.detach_()
-                    temp_source2_Sigma_yi = source2_Sigma_yi.detach_()
-                    temp_source3_Sigma_yi = source3_Sigma_yi.detach_()
-                    temp_source4_Sigma_yi = source4_Sigma_yi.detach_()
-                    
-                    mmd_loss_source1 = classifier.mmd_loss_source1(source1_Sigma_yi, temp_target_Sigma_yi) 
-                    mmd_loss_source2 = classifier.mmd_loss_source2(source2_Sigma_yi, temp_target_Sigma_yi)
-                    mmd_loss_source3 = classifier.mmd_loss_source3(source3_Sigma_yi, temp_target_Sigma_yi)
-                    mmd_loss_source4 = classifier.mmd_loss_source4(source4_Sigma_yi, temp_target_Sigma_yi)
-                    all_temp_source_Sigma_yi = temp_source1_Sigma_yi + temp_source2_Sigma_yi + temp_source3_Sigma_yi + temp_source4_Sigma_yi
-                    mmd_loss_target = classifier.mmd_loss_target(all_temp_source_Sigma_yi, target_Sigma_yi)
-                    source_mmd_loss_list = [mmd_loss_source1, mmd_loss_source2, mmd_loss_source3, mmd_loss_source4]
-
-                    # get a random subset of 4 source domains
-                    passing_num1 = torch.tensor(random.randint(0, 3)).to(device) 
-                    # passing_num2 = passing_num1
-                    passing_num2 = torch.tensor(random.randint(0, passing_num1)).to(device) 
-                    # passing_num3 = torch.tensor(random.randint(0, passing_num1)).to(device)
-                    passing_num3 = torch.tensor(random.randint(0, passing_num2)).to(device)
-                    random_i_list = random.sample(range(4), passing_num1)
-                    random_i_list2 = random.sample(random_i_list, passing_num2)
-                    random_i_list3 = random.sample(random_i_list2, passing_num3)
-
-                    cls_loss = cls_loss1 + cls_loss2 + cls_loss3 + cls_loss4
-                    # source_mmd_loss = mmd_loss_source1 + mmd_loss_source2 + mmd_loss_source3 + mmd_loss_source4
-                    source_mmd_loss = sum([source_mmd_loss_list[random_i] for random_i in random_i_list])
-                    target_loss = trade_off2 * mmd_loss_target
-                    loss = cls_loss + source_mmd_loss + target_loss
-
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()                
-
-                    cls_acc1 = accuracy(ys1, labels_s1)
-                    cls_acc2 = accuracy(ys2, labels_s2)
-                    cls_acc3 = accuracy(ys3, labels_s3)
-                    cls_acc4 = accuracy(ys4, labels_s4)
-                    trans_cls_acc, _, _cls_str = wyj_check_y_label(yt, labels_t, class_names)
-
-                    tar_acc = tar_acc + trans_cls_acc
-                    if trans_cls_acc > max_acc:
-                        max_acc = trans_cls_acc
-                    """"""
-                    if random_i_list2 != []:
-                        # get average source_mmd_loss                    
-                        classifier.FedAvg_transfer_layer(random_i_list2) # 
-                        # , ns_list=exp_mmd_list, nt=sum(exp_mmd_list)
-                        # classifier.FedAvg_pair_transfer_layer(passing_num2)
-
-                        # update source classifiers
-                        if random_i_list3 != []:
-                            if (epoch * iter_num + iter_i) % classifier_avg_num == 0:
-                                classifier.FedAvg_classifier(random_i_list3)
-
-                        # only classifier model 
-                        # classifier.FedAvg_only_target_classifier()
-                        # losssum, weight_0, weight_1, weight_2, weight_3 = classifier.FedAvg_only_target_classifier(ns_1, ns_2, ns_3, ns_4)
-
-                ave_trans_acc = tar_acc / iter_num
-                if ave_trans_acc > max_ace_acc:
-                    max_ace_acc = ave_trans_acc
-
-                # evaluate
-
-                # all_acc_point, mean_class_acc, cls_acc_str = wyj_check_y_label_for_voting(yt, labels_t, class_names)
-                all_acc_point, mean_class_acc, cls_acc_str = wyj_check_y_label(yt, labels_t, class_names)
-
-                log('epoch = {} , \t cls_acc1({}) = {:.5}, cls_acc2({}) = {:.5}, cls_acc3({}) = {:.5}, cls_acc4({}) = {:.5}%'.format(epoch, source_dataset_list[0], cls_acc1.item(), source_dataset_list[1], cls_acc2.item(), source_dataset_list[2], cls_acc3.item(), source_dataset_list[3], cls_acc4.item()))
-                log('\t TARGET: mean acc={:.3%}, mean class acc={:.3%}'.format(all_acc_point, mean_class_acc))
-                log('\t \t: this_iteration_avg_ace_acc={}'.format(ave_trans_acc))
-                log('\t \t: max_avg_ace_acc={}'.format(max_ace_acc))
-                log('\t   per class:  {}'.format(cls_acc_str))      
-                log(' source_mmd_loss1 = {}, \t source_mmd_loss2 = {}, \t source_mmd_loss3 = {}, \t source_mmd_loss4 = {}, \t target_mmd_loss = {} '.format(mmd_loss_source1.item(), mmd_loss_source2.item(), mmd_loss_source3.item(), mmd_loss_source4.item(), mmd_loss_target.item())) 
-                # log('\t   cls_loss  = {:.6} \t source_mmd_loss1 = {}, \t source_mmd_loss2 = {}, \t source_mmd_loss3 = {}, \t source_mmd_loss4 = {}, \t target_mmd_loss = {} '.format(cls_loss.item(), mmd_average_list[0], mmd_average_list[1], mmd_average_list[2], mmd_average_list[3], mmd_loss_target.item()))
-                # log('losssum = {} ,  weight_0 = {} , \t weight_1 = {} , \t weight_2 = {}, \t weight_3 = {} '.format(losssum, weight_0, weight_1, weight_2, weight_3))
-                # log('\t   cls_loss  = {:.6} \t source_mmd_loss = {:4.5},  \t target_mmd_loss = {:4.5} '.format(cls_loss.item(), mmd_loss_source.item(), mmd_loss_target.item()))
-
-                # if max_ace_acc > domain_acc_dic[target]:
-                #     domain_acc_dic[target] = max_ace_acc
-                #     torch.save(classifier.state_dict(), model_weight_path)
+            exp_repeated_num = 10
+            for currently_i in range(exp_repeated_num):
+                batch_ns = 128
+                batch_nt = batch_ns
+        
+                source_dataset_list = dataset_list.copy()
+                source_dataset_list.remove(target)
                 
+                # loading datasets                        
+                if dataset_name == "digit_five":
+                    num_classes = 10
+                    class_names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+                source_dataset1 = digit_five_dataset_federated(source_dataset_list[0])
+                source_dataset2 = digit_five_dataset_federated(source_dataset_list[1])
+                source_dataset3 = digit_five_dataset_federated(source_dataset_list[2])
+                source_dataset4 = digit_five_dataset_federated(source_dataset_list[3])
+                target_dataset = digit_five_dataset_federated(target)
+                ns_1, ns_2, ns_3, ns_4, nt = len(source_dataset1), len(source_dataset2), len(source_dataset3), len(source_dataset4), len(target_dataset)
+                ns_sum = ns_1 + ns_2 + ns_3 + ns_4
+                ns_list = [ns_1, ns_2, ns_3, ns_4, nt]
 
-            highest_acc.append(max_acc.item())
-            highest_ave_acc.append(max_ace_acc.item())
-            log('highest_acc = {}, \t highest_ave_acc = {}'.format(highest_acc, highest_ave_acc))
+                # DataLoader and ForeverDataIterator
+                # loader_list = [source_loader1, source_loader2, source_loader3, source_loader4, target_loader]
+                loader_list = digit_five_ForeverDataIterator(source_dataset1, source_dataset2, source_dataset3, source_dataset4, target_dataset, batch_ns, batch_nt)
+                train_source_iter1 = ForeverDataIterator(loader_list[0]) # source_loader1
+                train_source_iter2 = ForeverDataIterator(loader_list[1]) # source_loader2
+                train_source_iter3 = ForeverDataIterator(loader_list[2]) # source_loader3
+                train_source_iter4 = ForeverDataIterator(loader_list[3]) # source_loader4
+                train_target_iter = ForeverDataIterator(loader_list[4])# target_loader
 
-            
+                log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+                log('currently_i = {}'.format(currently_i))
+                log('Ts = {}'.format(Ts))
+                # sigma_list = {"mnist":1, "mnist-m":1, "usps":1, "synthetic_digits":3, "svhn":3}
+                sigma = 1 # sigma_list[target]
+                log("currently_i = {}".format(currently_i))
+                log("Experiments for Robustness (Fig 5 in the paper) on communication cycle num Ts:")
+                log("Ts =  [10, 20, 50, 100, 200, 400, 800]")
+                log("sigma = 1")
+                log('dataset = {}, \t source1 = {}, \t source2 = {}, \t source3 = {}, \t source4 = {}, \t target = {}'.format(dataset_name, source_dataset_list[0], source_dataset_list[1], source_dataset_list[2], source_dataset_list[3], target))                
+
+                # model setting
+                classifier = federated_source_and_target_model(feature_dim=feature_dim, m=m, n_features=n_features, sigma=sigma, gamma=mu, kernel=kernel, class_num=class_num).to(device)
+                value_loss = nn.CrossEntropyLoss()
+                learning_rate = 2e-4
+
+                epoches = 50
+                iter_num = 35 # 100 # 50 # 200 # 30
+
+                # log setting message
+                model_setting = 'resnet50'
+                log('Model: {} '.format(model_setting))
+                log('Setting: m={m}, n_features={n_features}, sigma={sigma}, mu={mu}, kernel={kernel}'.format(m=m, n_features=n_features, sigma=sigma, mu=mu, kernel=kernel))
+                log('       :  learning_rate={lr}, batch_ns={batch_ns}, batch_nt={batch_nt}, iter_num={iter_num}, trade_off1={trade_off1}, '.format(lr=learning_rate, batch_ns=batch_ns, batch_nt=batch_nt, iter_num=iter_num, trade_off1=trade_off1))
+                optimizer = Adam(classifier.parameters(), lr=learning_rate)
+
+                max_acc = torch.tensor(0).to(device)
+                max_ace_acc = torch.tensor(0).to(device)
+                mmd_average_list = [1, 1 ,1, 1]
+
+                """
+                # init W_rf layers
+                with torch.no_grad():
+                    Sigma_Sigma_T_list = [torch.zeros(2*n_features, 2*n_features).to(device)] * 5
+                    Sigma_y_list = [torch.zeros(2*n_features, 1).to(device)] * 5
+                    # a. get Sigma_1_i or  Sigma_1_i
+                    for loader_i in range(5):
+                        print('loader_i = ', loader_i)
+                        for data_i, label_i in tqdm(loader_list[loader_i]):
+                            source1_Sigma_i, source1_Sigma_yi = classifier.forward_rf_map(data_i.to(device))
+                            # record
+                            Sigma_Sigma_T_list[loader_i] += torch.mm(source1_Sigma_i, source1_Sigma_i.T)
+                            Sigma_y_list[loader_i] += source1_Sigma_yi
+                    # b. get eigenvectors 
+                    W_rf_s1, W_rf_s2, W_rf_s3, W_rf_s4, W_rf_t = get_all_init_W_rf(Sigma_Sigma_T_list, Sigma_y_list, ns_1, ns_2, ns_3, ns_4, nt, gamma=mu, m=m, batch_ns=batch_ns)
+                    # c. init the W_rf layer in classifier with W_rf matrix
+                    classifier.init_W_rf(W_rf_s1, W_rf_s2, W_rf_s3, W_rf_s4, W_rf_t)
+                """
+                
+                # train
+                for epoch in range(epoches):
+                    classifier.train()
+                    source_acc = torch.tensor(0).to(device)
+                    tar_acc = torch.tensor(0).to(device)
+                    source_num = torch.tensor(4).to(device)
+                    for iter_i in tqdm(range(iter_num)):
+                        x_s1, labels_s1 = next(train_source_iter1)
+                        x_s2, labels_s2 = next(train_source_iter2)
+                        x_s3, labels_s3 = next(train_source_iter3)
+                        x_s4, labels_s4 = next(train_source_iter4)
+                        x_t, labels_t = next(train_target_iter)
+                        x_s1 = x_s1.to(device)
+                        x_s2 = x_s2.to(device)
+                        x_s3 = x_s3.to(device)
+                        x_s4 = x_s4.to(device)
+                        x_t = x_t.to(device)
+
+                        labels_s1 = labels_s1.to(torch.int64)
+                        labels_s2 = labels_s2.to(torch.int64)
+                        labels_s3 = labels_s3.to(torch.int64)
+                        labels_s4 = labels_s4.to(torch.int64)
+                        labels_t = labels_t.to(torch.int64)
+                        labels_s1 = labels_s1.to(device)
+                        labels_s2 = labels_s2.to(device)
+                        labels_s3 = labels_s3.to(device)
+                        labels_s4 = labels_s4.to(device)
+                        labels_t = labels_t.to(device)      
+
+                        source1_Sigma_yi, source2_Sigma_yi, source3_Sigma_yi, source4_Sigma_yi, target_Sigma_yi, ys1, ys2, ys3, ys4, yt = classifier(x_s1, x_s2, x_s3, x_s4, x_t)
+
+                        cls_loss1 = value_loss(ys1, torch.flatten(labels_s1, start_dim=0))
+                        cls_loss2 = value_loss(ys2, torch.flatten(labels_s2, start_dim=0))
+                        cls_loss3 = value_loss(ys3, torch.flatten(labels_s3, start_dim=0))
+                        cls_loss4 = value_loss(ys4, torch.flatten(labels_s4, start_dim=0))
+                        
+                        # mmd_loss calculating
+                        temp_target_Sigma_yi = target_Sigma_yi.detach_()
+                        temp_source1_Sigma_yi = source1_Sigma_yi.detach_()
+                        temp_source2_Sigma_yi = source2_Sigma_yi.detach_()
+                        temp_source3_Sigma_yi = source3_Sigma_yi.detach_()
+                        temp_source4_Sigma_yi = source4_Sigma_yi.detach_()
+                        
+                        mmd_loss_source1 = classifier.mmd_loss_source1(source1_Sigma_yi, temp_target_Sigma_yi) 
+                        mmd_loss_source2 = classifier.mmd_loss_source2(source2_Sigma_yi, temp_target_Sigma_yi)
+                        mmd_loss_source3 = classifier.mmd_loss_source3(source3_Sigma_yi, temp_target_Sigma_yi)
+                        mmd_loss_source4 = classifier.mmd_loss_source4(source4_Sigma_yi, temp_target_Sigma_yi)
+                        all_temp_source_Sigma_yi_list = [temp_source1_Sigma_yi, temp_source2_Sigma_yi, temp_source3_Sigma_yi, temp_source4_Sigma_yi]
+                        # all_temp_source_Sigma_yi = temp_source1_Sigma_yi + temp_source2_Sigma_yi + temp_source3_Sigma_yi + temp_source4_Sigma_yi
+                        source_mmd_loss_list = [mmd_loss_source1, mmd_loss_source2, mmd_loss_source3, mmd_loss_source4]
+
+                        # get a random subset of 4 source domains
+                        passing_num1 = torch.tensor(random.randint(0, 3)).to(device) 
+                        # passing_num2 = torch.tensor(random.randint(0, passing_num1)).to(device) 
+                        # passing_num3 = torch.tensor(random.randint(0, passing_num2)).to(device)
+                        random_i_list = random.sample(range(4), passing_num1)
+                        # random_i_list2 = random.sample(random_i_list, passing_num2)
+                        # random_i_list3 = random.sample(random_i_list2, passing_num3)
+
+                        all_temp_source_Sigma_yi = sum([all_temp_source_Sigma_yi_list[random_i] for random_i in random_i_list])
+                        mmd_loss_target = classifier.mmd_loss_target(all_temp_source_Sigma_yi, target_Sigma_yi)
+
+                        cls_loss = cls_loss1 + cls_loss2 + cls_loss3 + cls_loss4
+                        # source_mmd_loss = mmd_loss_source1 + mmd_loss_source2 + mmd_loss_source3 + mmd_loss_source4
+                        source_mmd_loss = sum([source_mmd_loss_list[random_i] for random_i in random_i_list])
+                        target_loss = trade_off2 * mmd_loss_target
+                        loss = cls_loss + source_mmd_loss + target_loss
+
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()                
+
+                        cls_acc1 = accuracy(ys1, labels_s1)
+                        cls_acc2 = accuracy(ys2, labels_s2)
+                        cls_acc3 = accuracy(ys3, labels_s3)
+                        cls_acc4 = accuracy(ys4, labels_s4)
+                        trans_cls_acc, _, _cls_str = wyj_check_y_label(yt, labels_t, class_names)
+
+                        tar_acc = tar_acc + trans_cls_acc
+                        if trans_cls_acc > max_acc:
+                            max_acc = trans_cls_acc
+                        """"""
+                        if random_i_list != []:
+                            # get average source_mmd_loss                    
+                            classifier.FedAvg_transfer_layer(random_i_list) # 
+                            # , ns_list=exp_mmd_list, nt=sum(exp_mmd_list)
+                            # classifier.FedAvg_pair_transfer_layer(passing_num2)
+
+                            # update source classifiers
+                            if (epoch * iter_num + iter_i) % Ts == 0:
+                                classifier.FedAvg_classifier(random_i_list)
+
+                            # only classifier model 
+                            # classifier.FedAvg_only_target_classifier()
+                            # losssum, weight_0, weight_1, weight_2, weight_3 = classifier.FedAvg_only_target_classifier(ns_1, ns_2, ns_3, ns_4)
+
+                    ave_trans_acc = tar_acc / iter_num
+                    if ave_trans_acc > max_ace_acc:
+                        max_ace_acc = ave_trans_acc
+
+                    # evaluate
+
+                    # all_acc_point, mean_class_acc, cls_acc_str = wyj_check_y_label_for_voting(yt, labels_t, class_names)
+                    all_acc_point, mean_class_acc, cls_acc_str = wyj_check_y_label(yt, labels_t, class_names)
+
+                    log('epoch = {} , \t cls_acc1({}) = {:.5}, cls_acc2({}) = {:.5}, cls_acc3({}) = {:.5}, cls_acc4({}) = {:.5}%'.format(epoch, source_dataset_list[0], cls_acc1.item(), source_dataset_list[1], cls_acc2.item(), source_dataset_list[2], cls_acc3.item(), source_dataset_list[3], cls_acc4.item()))
+                    log('\t TARGET: mean acc={:.3%}, mean class acc={:.3%}'.format(all_acc_point, mean_class_acc))
+                    log('\t \t: this_iteration_avg_ace_acc={}'.format(ave_trans_acc))
+                    log('\t \t: max_avg_ace_acc={}'.format(max_ace_acc))
+                    log('\t   per class:  {}'.format(cls_acc_str))      
+                    # log(' source_mmd_loss1 = {}, \t source_mmd_loss2 = {}, \t source_mmd_loss3 = {}, \t source_mmd_loss4 = {}, \t target_mmd_loss = {} '.format(mmd_loss_source1.item(), mmd_loss_source2.item(), mmd_loss_source3.item(), mmd_loss_source4.item(), mmd_loss_target.item()))                 
+
+                highest_acc.append(max_acc.item())
+                highest_ave_acc.append(max_ace_acc.item())
+                log("Ts = {}".format(Ts))
+                log('highest_acc = {}, \t highest_ave_acc = {}'.format(highest_acc, highest_ave_acc))
+
+                
