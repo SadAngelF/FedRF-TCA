@@ -326,22 +326,23 @@ if __name__ == '__main__':
                     temp_target_Sigma_yi = target_Sigma_yi.detach_()
                     temp_source1_Sigma_yi = source1_Sigma_yi.detach_()
                     temp_source2_Sigma_yi = source2_Sigma_yi.detach_()
-                    temp_source3_Sigma_yi = source3_Sigma_yi.detach_()
-                    
+                    temp_source3_Sigma_yi = source3_Sigma_yi.detach_()                    
                     mmd_loss_source1 = classifier.mmd_loss_source1(source1_Sigma_yi, temp_target_Sigma_yi) 
                     mmd_loss_source2 = classifier.mmd_loss_source2(source2_Sigma_yi, temp_target_Sigma_yi)
                     mmd_loss_source3 = classifier.mmd_loss_source3(source3_Sigma_yi, temp_target_Sigma_yi)
-                    all_temp_source_Sigma_yi = temp_source1_Sigma_yi + temp_source2_Sigma_yi + temp_source3_Sigma_yi 
-                    mmd_loss_target = classifier.mmd_loss_target(all_temp_source_Sigma_yi, target_Sigma_yi)
+
+                    all_temp_source_Sigma_yi = [temp_source1_Sigma_yi, temp_source2_Sigma_yi, temp_source3_Sigma_yi ]
                     source_mmd_loss_list = [mmd_loss_source1, mmd_loss_source2, mmd_loss_source3]
 
                     # get a random subset of 4 source domains
                     passing_num1 = torch.tensor(random.randint(0, 2)).to(device)
                     random_i_list = random.sample(range(3), passing_num1)
-
+                    
                     cls_loss = cls_loss1 + cls_loss2 + cls_loss3
-                    # source_mmd_loss = mmd_loss_source1 + mmd_loss_source2 + mmd_loss_source3 + mmd_loss_source4
+                    all_temp_source_Sigma_yi = sum([all_temp_source_Sigma_yi[random_i] for random_i in random_i_list])
                     source_mmd_loss = sum([source_mmd_loss_list[random_i] for random_i in random_i_list])
+                    mmd_loss_target = classifier.mmd_loss_target(all_temp_source_Sigma_yi, target_Sigma_yi)
+                    
                     target_loss = trade_off2 * mmd_loss_target
                     loss = cls_loss + source_mmd_loss + target_loss
 
