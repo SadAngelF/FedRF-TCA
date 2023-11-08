@@ -12,3 +12,7 @@ This is a method extended from [TCA](https://ieeexplore.ieee.org/abstract/docume
 
 In this folder, we provide the code for FedRF-TCA, including the main file "v4_#dataset_multi_source.py", the data preprocessing and the model file.
 
+### Datasets
+
+All of the datasets can be found in [here](https://github.com/jindongwang/transferlearning/tree/master/data). Our code provides the corresponding code for preprocessing them.
+
